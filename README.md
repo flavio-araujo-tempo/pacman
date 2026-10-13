@@ -8,5 +8,15 @@ Throughout the tutorial, you will learn how to draw on the HTML5 canvas,  create
 
 ![pacman-ss](https://github.com/user-attachments/assets/2bef5ecf-1254-4a0c-8872-ee6ef1459789)
 
+## Continuous Integration
+
+GitHub Actions runs the `JavaScript syntax` check on every push and pull request.
+Run the same check locally with `node --check pacman.js`. This validates syntax,
+not browser gameplay.
+
+To require a passing check before merging, add `JavaScript syntax` as a required
+status check in the repository's branch protection settings or rulesets after
+the workflow has run once.
+
 ## Homework:
 You can continue working on this project if you like. You can design your own map by modifying the tileMap if you want. You can add power pellets to allow pacman to eat the ghosts. In addition, there is an opening on left and right, where if pacman goes through, it would appear on the other side of the map. Currently pacman just moves off screen out of the map so a fix would be needed to make pacman appear the other side. For more of a challenge, you can modify the ghosts movement to cover areas unreachable since the ghosts only change directions when they collide against a wall, and not when theres another path available to go through.
