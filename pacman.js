@@ -188,7 +188,6 @@ function move() {
         }
     }
 
-    //tunnel wrap-around: leaving one side reappears on the other
     if (pacman.x + pacman.width <= 0) {
         pacman.x = boardWidth - pacman.width;
     }
