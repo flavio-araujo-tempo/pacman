@@ -188,6 +188,14 @@ function move() {
         }
     }
 
+    //tunnel wrap-around: leaving one side reappears on the other
+    if (pacman.x + pacman.width <= 0) {
+        pacman.x = boardWidth - pacman.width;
+    }
+    else if (pacman.x >= boardWidth) {
+        pacman.x = 0;
+    }
+
     //check ghosts collision
     for (let ghost of ghosts.values()) {
         if (collision(ghost, pacman)) {

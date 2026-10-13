@@ -1,0 +1,7 @@
+{
+  "name": "pacman",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
