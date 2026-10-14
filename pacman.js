@@ -240,6 +240,24 @@ function move() {
         }
     }
 
+    //check food collision
+    let foodEaten = null;
+    for (let food of foods.values()) {
+        if (collision(pacman, food)) {
+            foodEaten = food;
+            score += food.isPower ? 50 : 10;
+            if (food.isPower) {
+                edibleTicksLeft = EDIBLE_TICKS;
+                ghostCombo = 0;
+                for (let ghost of ghosts.values()) {
+                    ghost.edible = true;
+                }
+            }
+            break;
+        }
+    }
+    foods.delete(foodEaten);
+
     //check ghosts collision
     for (let ghost of ghosts.values()) {
         if (collision(ghost, pacman)) {
@@ -249,6 +267,7 @@ function move() {
                 ghost.edible = false;
                 ghost.reset();
                 ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
+                continue; //updateDirection already stepped the ghost once
             }
             else {
                 lives -= 1;
@@ -276,24 +295,6 @@ function move() {
             }
         }
     }
-
-    //check food collision
-    let foodEaten = null;
-    for (let food of foods.values()) {
-        if (collision(pacman, food)) {
-            foodEaten = food;
-            score += food.isPower ? 50 : 10;
-            if (food.isPower) {
-                edibleTicksLeft = EDIBLE_TICKS;
-                ghostCombo = 0;
-                for (let ghost of ghosts.values()) {
-                    ghost.edible = true;
-                }
-            }
-            break;
-        }
-    }
-    foods.delete(foodEaten);
 
     //next level
     if (foods.size == 0) {
