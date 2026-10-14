@@ -16,12 +16,13 @@ let pacmanDownImage;
 let pacmanLeftImage;
 let pacmanRightImage;
 let wallImage;
+let scaredGhostImage;
 
-//X = wall, O = skip, P = pac man, ' ' = food
+//X = wall, O = skip, P = pac man, ' ' = food, U = power pellet
 //Ghosts: b = blue, o = orange, p = pink, r = red
 const tileMap = [
     "XXXXXXXXXXXXXXXXXXX",
-    "X        X        X",
+    "XU       X       UX",
     "X XX XXX X XXX XX X",
     "X                 X",
     "X XX X XXXXX X XX X",
@@ -39,7 +40,7 @@ const tileMap = [
     "XX X X XXXXX X X XX",
     "X    X   X   X    X",
     "X XXXXXX X XXXXXX X",
-    "X                 X",
+    "XU               UX",
     "XXXXXXXXXXXXXXXXXXX" 
 ];
 
@@ -52,6 +53,13 @@ const directions = ['U', 'D', 'L', 'R']; //up down left right
 let score = 0;
 let lives = 3;
 let gameOver = false;
+
+//power-up state, measured in 50ms ticks
+const EDIBLE_TICKS = 140; //7s
+const FLASH_TICKS = 40; //last 2s
+const FLASH_PERIOD_TICKS = 5; //250ms
+let edibleTicksLeft = 0;
+let ghostCombo = 0;
 
 window.onload = function() {
     board = document.getElementById("board");
@@ -75,6 +83,8 @@ window.onload = function() {
 function loadImages() {
     wallImage = new Image();
     wallImage.src = "./wall.png";
+    scaredGhostImage = new Image();
+    scaredGhostImage.src = "./scaredGhost.png";
 
     blueGhostImage = new Image();
     blueGhostImage.src = "./blueGhost.png";
@@ -99,6 +109,7 @@ function loadMap() {
     walls.clear();
     foods.clear();
     ghosts.clear();
+    resetPowerUp();
 
     for (let r = 0; r < rowCount; r++) {
         for (let c = 0; c < columnCount; c++) {
@@ -114,18 +125,22 @@ function loadMap() {
             }
             else if (tileMapChar == 'b') { //blue ghost
                 const ghost = new Block(blueGhostImage, x, y, tileSize, tileSize);
+                ghost.normalImage = ghost.image;
                 ghosts.add(ghost);
             }
             else if (tileMapChar == 'o') { //orange ghost
                 const ghost = new Block(orangeGhostImage, x, y, tileSize, tileSize);
+                ghost.normalImage = ghost.image;
                 ghosts.add(ghost);
             }
             else if (tileMapChar == 'p') { //pink ghost
                 const ghost = new Block(pinkGhostImage, x, y, tileSize, tileSize);
+                ghost.normalImage = ghost.image;
                 ghosts.add(ghost);
             }
             else if (tileMapChar == 'r') { //red ghost
                 const ghost = new Block(redGhostImage, x, y, tileSize, tileSize);
+                ghost.normalImage = ghost.image;
                 ghosts.add(ghost);
             }
             else if (tileMapChar == 'P') { //pacman
@@ -134,6 +149,11 @@ function loadMap() {
             else if (tileMapChar == ' ') { //empty is food
                 const food = new Block(null, x + 14, y + 14, 4, 4);
                 foods.add(food);
+            }
+            else if (tileMapChar == 'U') { //power pellet (counts as food)
+                const pellet = new Block(null, x + 10, y + 10, 12, 12);
+                pellet.isPower = true;
+                foods.add(pellet);
             }
         }
     }
@@ -152,7 +172,7 @@ function draw() {
     context.clearRect(0, 0, board.width, board.height);
     context.drawImage(pacman.image, pacman.x, pacman.y, pacman.width, pacman.height);
     for (let ghost of ghosts.values()) {
-        context.drawImage(ghost.image, ghost.x, ghost.y, ghost.width, ghost.height);
+        context.drawImage(ghostImage(ghost), ghost.x, ghost.y, ghost.width, ghost.height);
     }
     
     for (let wall of walls.values()) {
@@ -161,7 +181,14 @@ function draw() {
 
     context.fillStyle = "white";
     for (let food of foods.values()) {
-        context.fillRect(food.x, food.y, food.width, food.height);
+        if (food.isPower) {
+            context.beginPath();
+            context.arc(food.x + food.width/2, food.y + food.height/2, food.width/2, 0, 2*Math.PI);
+            context.fill();
+        }
+        else {
+            context.fillRect(food.x, food.y, food.width, food.height);
+        }
     }
 
     //score
@@ -175,7 +202,32 @@ function draw() {
     }
 }
 
+function ghostImage(ghost) {
+    if (!ghost.edible) {
+        return ghost.normalImage;
+    }
+    if (edibleTicksLeft > FLASH_TICKS) {
+        return scaredGhostImage;
+    }
+    return Math.floor(edibleTicksLeft / FLASH_PERIOD_TICKS) % 2 == 0 ? ghost.normalImage : scaredGhostImage;
+}
+
+function resetPowerUp() {
+    edibleTicksLeft = 0;
+    ghostCombo = 0;
+    for (let ghost of ghosts.values()) {
+        ghost.edible = false;
+    }
+}
+
 function move() {
+    if (edibleTicksLeft > 0) {
+        edibleTicksLeft--;
+        if (edibleTicksLeft == 0) {
+            resetPowerUp();
+        }
+    }
+
     pacman.x += pacman.velocityX;
     pacman.y += pacman.velocityY;
 
@@ -191,12 +243,22 @@ function move() {
     //check ghosts collision
     for (let ghost of ghosts.values()) {
         if (collision(ghost, pacman)) {
-            lives -= 1;
-            if (lives == 0) {
-                gameOver = true;
-                return;
+            if (ghost.edible) {
+                score += 200 * 2 ** Math.min(ghostCombo, 3);
+                ghostCombo++;
+                ghost.edible = false;
+                ghost.reset();
+                ghost.updateDirection(directions[Math.floor(Math.random()*4)]);
             }
-            resetPositions();
+            else {
+                lives -= 1;
+                if (lives == 0) {
+                    gameOver = true;
+                    resetPowerUp();
+                    return;
+                }
+                resetPositions();
+            }
         }
 
         if (ghost.y == tileSize*9 && ghost.direction != 'U' && ghost.direction != 'D') {
@@ -220,7 +282,14 @@ function move() {
     for (let food of foods.values()) {
         if (collision(pacman, food)) {
             foodEaten = food;
-            score += 10;
+            score += food.isPower ? 50 : 10;
+            if (food.isPower) {
+                edibleTicksLeft = EDIBLE_TICKS;
+                ghostCombo = 0;
+                for (let ghost of ghosts.values()) {
+                    ghost.edible = true;
+                }
+            }
             break;
         }
     }
@@ -284,6 +353,7 @@ function resetPositions() {
     pacman.reset();
     pacman.velocityX = 0;
     pacman.velocityY = 0;
+    resetPowerUp();
     for (let ghost of ghosts.values()) {
         ghost.reset();
         const newDirection = directions[Math.floor(Math.random()*4)];
